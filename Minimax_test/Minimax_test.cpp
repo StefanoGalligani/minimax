@@ -1,16 +1,12 @@
-//- Struttura albero(valori nelle foglie, nodi contengono solo dei figli)
-//- Creazione albero casuale
-//- Sistema di selezione del ramo a turni(entrambi dal giocatore)
-//- Giocatori con nomi HUMAN e AI, parametro per scegliere chi gioca prima, parametro per scegliere chi è MAX
 #include<stdio.h>
 #include<stdlib.h>
 #include<vector>
 #include<random>
 
-#define MIN_BRANCHES 3
-#define MAX_BRANCHES 4
-#define MIN_DEPTH 3
-#define MAX_DEPTH 4
+#define MIN_BRANCHES 2
+#define MAX_BRANCHES 6
+#define MIN_DEPTH 4
+#define MAX_DEPTH 8
 #define MIN_VALUE -10
 #define MAX_VALUE 10
 #define BRANCH_PROB 70
@@ -90,7 +86,7 @@ tree* random_tree(int depth) {
 
 tree* random_tree() { return random_tree(0); }
 
-int minimax(tree* t, int simulated_turn) {
+int minimax(tree* t, int simulated_turn, int best_in_above_level) {
 	if (t->is_leaf()) {
 		t->expected_value = dynamic_cast<leaf*>(t)->value;
 		return -1;
@@ -100,11 +96,15 @@ int minimax(tree* t, int simulated_turn) {
 	int best_value = looking_for_max ? MIN_VALUE - 1 : MAX_VALUE + 1;
 	int best_branch = -1;
 	for (int i = 0; i < n->children.size(); i++) {
-		minimax(n->children[i], 1 - simulated_turn);
+		minimax(n->children[i], 1 - simulated_turn, best_value);
 		if (looking_for_max && n->children[i]->expected_value > best_value ||
 			!looking_for_max && n->children[i]->expected_value < best_value) {
 			best_value = n->children[i]->expected_value;
 			best_branch = i;
+			if (looking_for_max && best_value >= best_in_above_level ||
+				!looking_for_max && best_value <= best_in_above_level) {
+				break;
+			}
 		}
 	}
 	t->expected_value = best_value;
@@ -117,23 +117,25 @@ int acquire_selection(node* n, int turn) {
 		printf("\n");
 		while (selection < 1 || selection > n->children.size()) {
 			if (AI_OBJECTIVE == 0) {
-				printf("HUMAN pick a branch (get the highest value) : ");
+				printf("HUMAN pick a branch between %d and %d (get the highest value) : ", 1, (int)n->children.size());
 			}
 			else {
-				printf("HUMAN pick a branch (get the lowest value) : ");
+				printf("HUMAN pick a branch between %d and %d (get the lowest value) : ", 1, (int)n->children.size());
 			}
 			scanf_s("%d", &selection);
 		}
 		return selection - 1;
 	}
 
-	int ai_selection = minimax(n, turn);
+	bool looking_for_max = (1 == AI_OBJECTIVE);
+	int ai_selection = minimax(n, turn, looking_for_max ? MAX_VALUE + 1 : MIN_VALUE - 1);
 	if (AI_OBJECTIVE == 0) {
-		printf("\nAI pick a branch (get to the lowest value) : %d\n", (ai_selection + 1));
+		printf("\nAI pick a branch between %d and %d (get to the lowest value) : %d\n", 1, (int)n->children.size(), (ai_selection + 1));
 	}
 	else {
-		printf("\nAI pick a branch (get to the highest value) : %d\n", (ai_selection + 1));
+		printf("\nAI pick a branch between %d and %d (get to the highest value) : %d\n", 1, (int)n->children.size(), (ai_selection + 1));
 	}
+	printf("Expected value is %d\n", n->expected_value);
 	return ai_selection;
 }
 
